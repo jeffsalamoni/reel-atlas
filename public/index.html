@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Reel Atlas</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -21,119 +21,218 @@
       --aglow:  rgba(201,168,76,0.10);
       --red:    #e05a5a;
       --green:  #5ab08a;
+      --sheet-radius: 18px;
     }
-    html, body { height: 100%; overflow: hidden; }
-    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); display: flex; }
 
-    /* ── SIDEBAR ── */
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    /* ═══════════════════════════════════════
+       MAP — always behind everything on mobile
+    ═══════════════════════════════════════ */
+    #map {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+
+    /* ═══════════════════════════════════════
+       MOBILE LAYOUT (default / base)
+       Bottom sheet over full-screen map
+    ═══════════════════════════════════════ */
     .sidebar {
-      width: 380px; min-width: 380px;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 100;
+      height: 88vh;
       background: var(--surf);
-      border-right: 1px solid var(--border);
-      display: flex; flex-direction: column;
-      overflow: hidden; z-index: 10;
+      border-radius: var(--sheet-radius) var(--sheet-radius) 0 0;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      /* Start collapsed — showing handle + input (~130px) */
+      transform: translateY(calc(100% - 130px));
+      transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    .sidebar.open {
+      transform: translateY(12%);
     }
 
-    .sidebar-top {
-      padding: 20px 20px 16px;
-      border-bottom: 1px solid var(--border);
+    /* Drag handle */
+    .sheet-handle {
+      display: flex;
+      justify-content: center;
+      padding: 10px 0 6px;
+      cursor: pointer;
       flex-shrink: 0;
     }
-    .logo { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 600; margin-bottom: 2px; }
-    .logo em { font-style: italic; color: var(--accent); }
-    .tagline { font-size: 11px; color: var(--muted); font-weight: 300; }
+    .handle-bar {
+      width: 36px; height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+    }
 
-    /* ── INPUT ── */
-    .input-section { padding: 16px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    /* Mobile header — compact */
+    .sidebar-top {
+      padding: 4px 18px 12px;
+      flex-shrink: 0;
+    }
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px; font-weight: 600;
+    }
+    .logo em { font-style: italic; color: var(--accent); }
+    .tagline { display: none; } /* hidden on mobile */
+
+    /* Input */
+    .input-section {
+      padding: 0 14px 12px;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
+    }
     .field-label {
-      display: block; font-size: 10px; font-weight: 600;
-      letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+      display: none; /* hidden on mobile */
     }
     .url-row { display: flex; gap: 8px; }
     .url-input {
-      flex: 1; background: var(--s2); border: 1px solid var(--border); border-radius: 8px;
-      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px;
-      padding: 8px 12px; outline: none; transition: border-color 0.18s;
+      flex: 1;
+      background: var(--s2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      padding: 11px 14px;
+      outline: none;
+      transition: border-color 0.18s;
+      -webkit-appearance: none;
     }
     .url-input:focus { border-color: var(--accent); }
     .url-input::placeholder { color: var(--muted); }
+
     .analyze-btn {
-      background: var(--accent); color: #0c0c0e; border: none; border-radius: 8px;
-      padding: 8px 16px; font-family: 'DM Sans', sans-serif; font-size: 13px;
-      font-weight: 600; cursor: pointer; white-space: nowrap;
-      transition: opacity 0.18s, transform 0.1s;
+      background: var(--accent);
+      color: #0c0c0e;
+      border: none;
+      border-radius: 10px;
+      padding: 11px 16px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+      transition: opacity 0.18s;
     }
-    .analyze-btn:hover:not(:disabled) { opacity: 0.88; }
-    .analyze-btn:active:not(:disabled) { transform: scale(0.97); }
-    .analyze-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .analyze-btn:active { opacity: 0.75; }
+    .analyze-btn:disabled { opacity: 0.35; }
+
     .status-bar {
-      margin-top: 9px; font-size: 11.5px; padding: 7px 10px;
-      border-radius: 7px; display: none; line-height: 1.45;
+      margin-top: 8px;
+      font-size: 12px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      display: none;
+      line-height: 1.45;
     }
     .status-bar.show    { display: block; }
     .status-bar.loading { background: var(--aglow); color: var(--accent); }
     .status-bar.error   { background: rgba(224,90,90,0.12); color: var(--red); }
     .status-bar.success { background: rgba(90,176,138,0.12); color: var(--green); }
 
-    /* ── FILTERS ── */
+    /* Scrollable body of the sheet */
+    .sheet-body {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+
+    /* Filters */
     .filter-bar {
-      padding: 12px 20px 10px;
+      padding: 10px 14px 8px;
       border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
       display: none;
+      flex-shrink: 0;
     }
     .filter-bar.visible { display: block; }
     .filter-label {
-      font-size: 10px; font-weight: 600; letter-spacing: 1.2px;
-      text-transform: uppercase; color: var(--muted); margin-bottom: 8px; display: block;
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 7px; display: block;
     }
-    .filter-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+    .filter-pills {
+      display: flex; flex-wrap: nowrap;
+      gap: 6px; overflow-x: auto;
+      padding-bottom: 2px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .filter-pills::-webkit-scrollbar { display: none; }
     .filter-pill {
       display: inline-flex; align-items: center; gap: 4px;
       background: var(--s2); border: 1px solid var(--border);
-      border-radius: 20px; padding: 3px 10px 3px 8px;
-      font-size: 11px; font-weight: 500; color: var(--muted);
-      cursor: pointer; transition: all 0.18s; white-space: nowrap;
+      border-radius: 20px; padding: 5px 11px;
+      font-size: 12px; font-weight: 500; color: var(--muted);
+      cursor: pointer; white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+      transition: all 0.15s;
     }
-    .filter-pill:hover { border-color: var(--accent); color: var(--text); }
     .filter-pill.active {
-      background: var(--aglow); border-color: var(--accent);
+      background: var(--aglow);
+      border-color: var(--accent);
       color: var(--accent);
     }
 
-    /* ── LIST HEADER ── */
-    .list-header { padding: 12px 20px 8px; flex-shrink: 0; }
-    .list-label { font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); }
+    /* List header */
+    .list-header {
+      padding: 10px 14px 6px;
+      flex-shrink: 0;
+    }
+    .list-label {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--muted);
+    }
 
-    /* ── REEL LIST ── */
-    .reel-list { flex: 1; overflow-y: auto; padding: 0 10px 12px; }
-    .reel-list::-webkit-scrollbar { width: 3px; }
-    .reel-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    /* Reel list */
+    .reel-list { padding: 0 10px 80px; }
 
-    .empty-state { text-align: center; padding: 36px 16px; color: var(--muted); }
+    .empty-state { text-align: center; padding: 32px 16px; color: var(--muted); }
     .empty-icon  { font-size: 28px; margin-bottom: 10px; opacity: 0.5; }
-    .empty-state p { font-size: 12.5px; line-height: 1.65; }
+    .empty-state p { font-size: 13px; line-height: 1.65; }
 
-    /* ── REEL CARD ── */
+    /* Reel card */
     .reel-card {
-      background: var(--s2); border: 1px solid var(--border); border-radius: 10px;
-      padding: 0; margin-bottom: 8px; overflow: hidden;
-      transition: border-color 0.18s;
+      background: var(--s2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 10px;
+      overflow: hidden;
       animation: fadeUp 0.28s ease forwards;
     }
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(6px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    .reel-card:hover { border-color: rgba(201,168,76,0.35); }
 
     .reel-card-header {
       display: flex; align-items: center; gap: 8px;
-      padding: 10px 12px 8px; cursor: pointer;
+      padding: 11px 13px 9px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
     }
     .plat-pill {
       display: inline-flex; align-items: center; gap: 5px;
-      font-size: 9.5px; font-weight: 600; letter-spacing: 0.9px; text-transform: uppercase;
+      font-size: 9.5px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase;
       color: var(--muted); background: var(--bg); padding: 2px 8px;
       border-radius: 20px; border: 1px solid var(--border); flex-shrink: 0;
     }
@@ -142,112 +241,155 @@
     .pdot.instagram { background: #c13584; }
     .card-url {
       font-size: 11px; color: var(--muted);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      flex: 1; min-width: 0;
     }
 
-    /* ── LOCATION ROWS ── */
+    /* Location rows */
     .loc-row {
-      display: flex; align-items: flex-start; gap: 10px;
-      padding: 9px 12px; border-top: 1px solid var(--border);
-      cursor: pointer; transition: background 0.15s;
+      display: flex; align-items: flex-start; gap: 11px;
+      padding: 11px 13px;
+      border-top: 1px solid var(--border);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s;
     }
-    .loc-row:hover { background: rgba(255,255,255,0.02); }
+    .loc-row:active { background: var(--s3); }
     .loc-row.filtered-out { display: none; }
 
-    .loc-icon {
-      font-size: 18px; flex-shrink: 0; margin-top: 1px;
-      width: 28px; text-align: center;
-    }
+    .loc-icon { font-size: 20px; flex-shrink: 0; width: 28px; text-align: center; padding-top: 1px; }
     .loc-body { flex: 1; min-width: 0; }
-    .loc-name {
-      font-size: 13px; font-weight: 500; color: var(--text);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      margin-bottom: 2px;
-    }
-    .loc-category {
-      font-size: 10px; font-weight: 600; letter-spacing: 0.7px;
-      text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
-    }
-    .loc-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .loc-rating {
-      display: flex; align-items: center; gap: 3px;
-      font-size: 11.5px; font-weight: 600; color: var(--accent);
-    }
-    .loc-rating-count { font-size: 10.5px; color: var(--muted); font-weight: 400; }
-    .loc-address {
-      font-size: 11px; color: var(--muted);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      max-width: 200px;
-    }
+    .loc-name  { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .loc-category { font-size: 10px; font-weight: 600; letter-spacing: 0.7px; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+    .loc-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 5px; }
+    .loc-rating { display: flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; color: var(--accent); }
+    .loc-rating-count { font-size: 11px; color: var(--muted); font-weight: 400; }
+    .loc-address { font-size: 11.5px; color: var(--muted); }
     .loc-maps-link {
       display: inline-flex; align-items: center; gap: 3px;
-      font-size: 10.5px; color: var(--accent); text-decoration: none;
-      font-weight: 500; white-space: nowrap; margin-top: 4px;
+      font-size: 11.5px; color: var(--accent); text-decoration: none; font-weight: 500;
     }
-    .loc-maps-link:hover { text-decoration: underline; }
 
-    /* ── MAP ── */
-    #map { flex: 1; z-index: 1; }
-
-    /* ── LEAFLET POPUP ── */
+    /* Popup */
     .leaflet-popup-content-wrapper {
-      background: var(--surf) !important; border: 1px solid var(--border) !important;
-      border-radius: 12px !important; box-shadow: 0 10px 36px rgba(0,0,0,0.6) !important;
+      background: var(--surf) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: 12px !important;
+      box-shadow: 0 10px 36px rgba(0,0,0,0.6) !important;
       padding: 0 !important;
     }
     .leaflet-popup-tip { background: var(--surf) !important; }
-    .leaflet-popup-content { margin: 0 !important; font-family: 'DM Sans', sans-serif !important; width: 240px !important; }
-    .leaflet-popup-close-button { color: var(--muted) !important; top: 10px !important; right: 12px !important; }
+    .leaflet-popup-content { margin: 0 !important; font-family: 'DM Sans', sans-serif !important; }
+    .leaflet-popup-close-button { color: var(--muted) !important; top: 10px !important; right: 12px !important; font-size: 18px !important; }
 
-    .popup-inner { padding: 14px 16px; }
-    .popup-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+    .popup-inner { padding: 14px 16px 14px; }
+    .popup-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
     .popup-icon { font-size: 22px; flex-shrink: 0; }
     .popup-head { flex: 1; min-width: 0; }
-    .popup-name {
-      font-family: 'Playfair Display', serif; font-size: 15px;
-      color: var(--text); line-height: 1.25; margin-bottom: 2px;
-    }
-    .popup-cat { font-size: 10px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); }
-    .popup-rating {
-      display: flex; align-items: center; gap: 4px;
-      font-size: 12px; font-weight: 600; color: var(--accent); margin-bottom: 6px;
-    }
+    .popup-name { font-family: 'Playfair Display', serif; font-size: 15px; color: var(--text); line-height: 1.25; margin-bottom: 2px; }
+    .popup-cat  { font-size: 10px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); }
+    .popup-rating { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--accent); margin-bottom: 5px; }
     .popup-rating-count { font-size: 11px; color: var(--muted); font-weight: 400; }
     .popup-address { font-size: 11px; color: var(--muted); line-height: 1.4; margin-bottom: 10px; }
-    .popup-links { display: flex; gap: 8px; }
+    .popup-links { display: flex; gap: 7px; }
     .popup-maps-btn {
-      display: inline-flex; align-items: center; gap: 5px;
+      display: inline-flex; align-items: center; gap: 4px;
       background: var(--aglow); border: 1px solid rgba(201,168,76,0.25);
-      color: var(--accent); font-size: 11px; font-weight: 600;
-      padding: 5px 10px; border-radius: 6px; text-decoration: none;
-      transition: background 0.15s;
+      color: var(--accent); font-size: 11.5px; font-weight: 600;
+      padding: 6px 11px; border-radius: 7px; text-decoration: none;
     }
-    .popup-maps-btn:hover { background: rgba(201,168,76,0.2); }
     .popup-source-btn {
-      display: inline-flex; align-items: center; gap: 5px;
+      display: inline-flex; align-items: center; gap: 4px;
       background: var(--s2); border: 1px solid var(--border);
-      color: var(--muted); font-size: 11px; font-weight: 500;
-      padding: 5px 10px; border-radius: 6px; text-decoration: none;
-      transition: background 0.15s;
+      color: var(--muted); font-size: 11.5px; font-weight: 500;
+      padding: 6px 11px; border-radius: 7px; text-decoration: none;
     }
-    .popup-source-btn:hover { background: var(--s3); color: var(--text); }
 
-    /* Spinner */
     @keyframes spin { to { transform: rotate(360deg); } }
     .spin {
       display: inline-block; width: 11px; height: 11px;
       border: 2px solid currentColor; border-top-color: transparent;
       border-radius: 50%; animation: spin 0.7s linear infinite;
-      vertical-align: middle; margin-right: 6px;
+      vertical-align: middle; margin-right: 5px;
     }
 
-    /* Stars */
-    .stars { letter-spacing: -1px; }
+    /* ═══════════════════════════════════════
+       DESKTOP LAYOUT (≥ 769px)
+       Sidebar + map side by side
+    ═══════════════════════════════════════ */
+    @media (min-width: 769px) {
+      body { display: flex; }
+
+      #map {
+        position: static;
+        flex: 1;
+      }
+
+      .sidebar {
+        position: static;
+        width: 380px;
+        min-width: 380px;
+        height: 100vh;
+        border-radius: 0;
+        border: none;
+        border-right: 1px solid var(--border);
+        transform: none !important;
+        transition: none;
+      }
+
+      .sheet-handle { display: none; }
+
+      .sidebar-top {
+        padding: 20px 20px 14px;
+        border-bottom: 1px solid var(--border);
+      }
+      .logo { font-size: 20px; }
+      .tagline {
+        display: block;
+        font-size: 11px; color: var(--muted); font-weight: 300; margin-top: 2px;
+      }
+
+      .input-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+      .field-label {
+        display: block;
+        font-size: 10px; font-weight: 600; letter-spacing: 1.2px;
+        text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+      }
+
+      .url-input { font-size: 13px; padding: 8px 12px; border-radius: 8px; }
+      .analyze-btn { font-size: 13px; padding: 8px 14px; border-radius: 8px; }
+
+      .filter-bar { padding: 12px 20px 10px; }
+      .filter-pills { flex-wrap: wrap; overflow: visible; }
+      .filter-pill { font-size: 11px; padding: 3px 10px; }
+
+      .list-header { padding: 12px 20px 8px; }
+
+      .reel-list { padding: 0 10px 12px; overflow-y: auto; }
+      .reel-list::-webkit-scrollbar { width: 3px; }
+      .reel-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+      .sheet-body { overflow: visible; display: contents; }
+
+      .reel-card { border-radius: 10px; margin-bottom: 8px; }
+      .reel-card-header { padding: 10px 12px 8px; }
+      .loc-row { padding: 9px 12px; }
+      .loc-name { font-size: 13px; }
+      .loc-maps-link { font-size: 11px; }
+
+      .leaflet-popup-content { width: 240px !important; }
+    }
   </style>
 </head>
 <body>
 
-<div class="sidebar">
+<div id="map"></div>
+
+<div class="sidebar" id="sidebar">
+  <div class="sheet-handle" id="sheetHandle" onclick="toggleSheet()">
+    <div class="handle-bar"></div>
+  </div>
+
   <div class="sidebar-top">
     <div class="logo">Reel <em>Atlas</em></div>
     <div class="tagline">Map every place you discover on social media</div>
@@ -256,134 +398,140 @@
   <div class="input-section">
     <label class="field-label">TikTok or Instagram URL</label>
     <div class="url-row">
-      <input id="urlInput" class="url-input" type="text" placeholder="Paste link here…" />
+      <input id="urlInput" class="url-input" type="text"
+        placeholder="Paste a TikTok or Instagram link…"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
       <button id="analyzeBtn" class="analyze-btn" onclick="analyze()">Map It</button>
     </div>
     <div class="status-bar" id="statusBar"></div>
   </div>
 
-  <div class="filter-bar" id="filterBar">
-    <span class="filter-label">Filter by category</span>
-    <div class="filter-pills" id="filterPills"></div>
-  </div>
+  <!-- Everything below here scrolls on mobile -->
+  <div class="sheet-body">
+    <div class="filter-bar" id="filterBar">
+      <span class="filter-label">Filter by category</span>
+      <div class="filter-pills" id="filterPills"></div>
+    </div>
 
-  <div class="list-header">
-    <span class="list-label" id="countLabel">0 Reels Indexed</span>
-  </div>
+    <div class="list-header">
+      <span class="list-label" id="countLabel">0 Reels Indexed</span>
+    </div>
 
-  <div class="reel-list" id="reelList">
-    <div class="empty-state">
-      <div class="empty-icon">🗺️</div>
-      <p>Paste a TikTok or Instagram link above to start mapping locations.</p>
+    <div class="reel-list" id="reelList">
+      <div class="empty-state">
+        <div class="empty-icon">🗺️</div>
+        <p>Paste a TikTok or Instagram link above to start mapping locations.</p>
+      </div>
     </div>
   </div>
 </div>
 
-<div id="map"></div>
-
 <script>
   // ── State ─────────────────────────────────────────────
   const reels       = [];
-  const allMarkers  = [];   // { marker, category, reelIndex, locIndex }
+  const allMarkers  = [];
   const activeFilters = new Set(['all']);
   let map;
+  let sheetOpen = false;
 
-  // ── Category Config ───────────────────────────────────
-  const CATEGORIES = {
-    restaurant: { label: 'Restaurant',  emoji: '🍽️',  color: '#e8734a' },
-    cafe:       { label: 'Café',        emoji: '☕',  color: '#c9a84c' },
-    bar:        { label: 'Bar',         emoji: '🍸',  color: '#9b6dff' },
-    landmark:   { label: 'Landmark',    emoji: '🏛️',  color: '#4a9de8' },
-    nature:     { label: 'Nature',      emoji: '🌿',  color: '#5ab08a' },
-    hotel:      { label: 'Hotel',       emoji: '🏨',  color: '#e85d9b' },
-    shopping:   { label: 'Shopping',    emoji: '🛍️',  color: '#f0c040' },
-    beach:      { label: 'Beach',       emoji: '🏖️',  color: '#4ac9d4' },
-    area:       { label: 'Area',        emoji: '📍',  color: '#888899' },
-    place:      { label: 'Place',       emoji: '📌',  color: '#888899' },
+  // ── Categories ────────────────────────────────────────
+  const CATS = {
+    restaurant: { label: 'Restaurant', emoji: '🍽️', color: '#e8734a' },
+    cafe:       { label: 'Café',       emoji: '☕', color: '#c9a84c' },
+    bar:        { label: 'Bar',        emoji: '🍸', color: '#9b6dff' },
+    landmark:   { label: 'Landmark',   emoji: '🏛️', color: '#4a9de8' },
+    nature:     { label: 'Nature',     emoji: '🌿', color: '#5ab08a' },
+    hotel:      { label: 'Hotel',      emoji: '🏨', color: '#e85d9b' },
+    shopping:   { label: 'Shopping',   emoji: '🛍️', color: '#f0c040' },
+    beach:      { label: 'Beach',      emoji: '🏖️', color: '#4ac9d4' },
+    area:       { label: 'Area',       emoji: '📍', color: '#888899' },
+    place:      { label: 'Place',      emoji: '📌', color: '#888899' },
   };
 
   function categorize(types = []) {
     const t = types;
-    if (t.some(x => ['restaurant','food','meal_takeaway','meal_delivery','fast_food'].includes(x)))
-      return 'restaurant';
-    if (t.some(x => ['cafe','bakery','coffee_shop'].includes(x)))
-      return 'cafe';
-    if (t.some(x => ['bar','night_club','liquor_store'].includes(x)))
-      return 'bar';
-    if (t.some(x => ['tourist_attraction','museum','art_gallery','church','place_of_worship','monument','historic_site'].includes(x)))
-      return 'landmark';
-    if (t.some(x => ['park','natural_feature','campground','national_park'].includes(x)))
-      return 'nature';
-    if (t.some(x => ['lodging'].includes(x)))
-      return 'hotel';
-    if (t.some(x => ['shopping_mall','store','clothing_store','department_store','supermarket'].includes(x)))
-      return 'shopping';
-    if (t.some(x => ['beach'].includes(x)))
-      return 'beach';
-    if (t.some(x => ['locality','neighborhood','sublocality','political','administrative_area_level_1'].includes(x)))
-      return 'area';
+    if (t.some(x => ['restaurant','food','meal_takeaway','meal_delivery','fast_food'].includes(x))) return 'restaurant';
+    if (t.some(x => ['cafe','bakery','coffee_shop'].includes(x)))                                    return 'cafe';
+    if (t.some(x => ['bar','night_club','liquor_store'].includes(x)))                                return 'bar';
+    if (t.some(x => ['tourist_attraction','museum','art_gallery','church','place_of_worship','monument'].includes(x))) return 'landmark';
+    if (t.some(x => ['park','natural_feature','campground'].includes(x)))                            return 'nature';
+    if (t.some(x => ['lodging'].includes(x)))                                                        return 'hotel';
+    if (t.some(x => ['shopping_mall','store','clothing_store','department_store'].includes(x)))      return 'shopping';
+    if (t.some(x => ['beach'].includes(x)))                                                          return 'beach';
+    if (t.some(x => ['locality','neighborhood','sublocality','political'].includes(x)))              return 'area';
     return 'place';
   }
 
-  function renderStars(rating) {
-    if (!rating) return '';
-    const full  = Math.floor(rating);
-    const half  = rating - full >= 0.5 ? 1 : 0;
-    const empty = 5 - full - half;
+  function renderStars(r) {
+    if (!r) return '';
+    const full = Math.floor(r), half = r - full >= 0.5 ? 1 : 0, empty = 5 - full - half;
     return '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(empty);
   }
 
-  function formatCount(n) {
+  function fmtCount(n) {
     if (!n) return '';
-    if (n >= 1000) return `(${(n / 1000).toFixed(1)}k)`;
-    return `(${n})`;
+    return n >= 1000 ? `(${(n/1000).toFixed(1)}k)` : `(${n})`;
   }
 
-  // ── Map Init ──────────────────────────────────────────
+  // ── Mobile sheet toggle ────────────────────────────────
+  function toggleSheet() {
+    const isMobile = window.innerWidth < 769;
+    if (!isMobile) return;
+    sheetOpen = !sheetOpen;
+    document.getElementById('sidebar').classList.toggle('open', sheetOpen);
+  }
+
+  function openSheet() {
+    if (window.innerWidth >= 769) return;
+    sheetOpen = true;
+    document.getElementById('sidebar').classList.add('open');
+  }
+
+  // Auto-open sheet when input is focused on mobile
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('urlInput').addEventListener('focus', () => {
+      if (window.innerWidth < 769) openSheet();
+    });
+  });
+
+  // ── Map ───────────────────────────────────────────────
   function initMap() {
-    map = L.map('map', { center: [25, 10], zoom: 2 });
+    map = L.map('map', { center: [25, 10], zoom: 2, zoomControl: true });
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd', maxZoom: 19
     }).addTo(map);
   }
 
-  // ── Marker Icon ───────────────────────────────────────
-  function markerIcon(categoryKey, platform) {
-    const cat   = CATEGORIES[categoryKey] || CATEGORIES.place;
-    const pcolor = platform === 'tiktok' ? '#ff0050' : '#c13584';
+  // ── Marker ────────────────────────────────────────────
+  function markerIcon(catKey, platform) {
+    const cat    = CATS[catKey] || CATS.place;
+    const pdot   = platform === 'tiktok' ? '#ff0050' : '#c13584';
     return L.divIcon({
       html: `<div style="position:relative;width:36px;height:36px;">
         <div style="
-          position:absolute;inset:0;
-          background:${cat.color};
-          border:2.5px solid white;
-          border-radius:50%;
+          position:absolute;inset:0;background:${cat.color};
+          border:2.5px solid white;border-radius:50%;
           box-shadow:0 3px 12px rgba(0,0,0,0.45);
-          display:flex;align-items:center;justify-content:center;
-          font-size:16px;
+          display:flex;align-items:center;justify-content:center;font-size:16px;
         ">${cat.emoji}</div>
         <div style="
-          position:absolute;bottom:-2px;right:-2px;
+          position:absolute;bottom:-1px;right:-1px;
           width:11px;height:11px;border-radius:50%;
-          background:${pcolor};border:1.5px solid #0c0c0e;
+          background:${pdot};border:1.5px solid #0c0c0e;
         "></div>
       </div>`,
-      iconSize:   [36, 36],
-      iconAnchor: [18, 18],
-      className:  ''
+      iconSize: [36,36], iconAnchor: [18,18], className: ''
     });
   }
 
-  // ── Popup HTML ────────────────────────────────────────
   function popupHTML(loc, reel) {
-    const cat = CATEGORIES[loc.categoryKey] || CATEGORIES.place;
+    const cat    = CATS[loc.catKey] || CATS.place;
     const rating = loc.place.rating
       ? `<div class="popup-rating">
-           <span class="stars" style="color:var(--accent)">${renderStars(loc.place.rating)}</span>
+           <span>${renderStars(loc.place.rating)}</span>
            <span>${loc.place.rating.toFixed(1)}</span>
-           <span class="popup-rating-count">${formatCount(loc.place.ratingCount)}</span>
-         </div>`
-      : '';
+           <span class="popup-rating-count">${fmtCount(loc.place.ratingCount)}</span>
+         </div>` : '';
     return `
       <div class="popup-inner">
         <div class="popup-top">
@@ -396,52 +544,40 @@
         ${rating}
         <div class="popup-address">${loc.place.address}</div>
         <div class="popup-links">
-          <a class="popup-maps-btn" href="${loc.place.mapsUrl}" target="_blank">📍 Google Maps</a>
+          <a class="popup-maps-btn" href="${loc.place.mapsUrl}" target="_blank">📍 Maps</a>
           <a class="popup-source-btn" href="${reel.url}" target="_blank">▶ Video</a>
         </div>
       </div>`;
   }
 
-  // ── Add Markers ───────────────────────────────────────
-  function addMarkersForReel(reel, reelIndex) {
-    reel.locations.forEach((loc, locIndex) => {
-      const marker = L.marker([loc.place.lat, loc.place.lon], {
-        icon: markerIcon(loc.categoryKey, reel.platform)
-      })
+  function addMarkersForReel(reel, reelIdx) {
+    reel.locations.forEach((loc, locIdx) => {
+      const marker = L.marker([loc.place.lat, loc.place.lon], { icon: markerIcon(loc.catKey, reel.platform) })
         .addTo(map)
         .bindPopup(popupHTML(loc, reel), { maxWidth: 260 });
-
-      allMarkers.push({ marker, category: loc.categoryKey, reelIndex, locIndex });
+      allMarkers.push({ marker, category: loc.catKey, reelIdx, locIdx });
     });
   }
 
   // ── Filters ───────────────────────────────────────────
-  function getAllCategories() {
-    const seen = new Set();
-    reels.forEach(r => r.locations.forEach(l => seen.add(l.categoryKey)));
-    return [...seen];
+  function getAllCats() {
+    const s = new Set();
+    reels.forEach(r => r.locations.forEach(l => s.add(l.catKey)));
+    return [...s];
   }
 
   function renderFilters() {
     const bar   = document.getElementById('filterBar');
     const pills = document.getElementById('filterPills');
-    const cats  = getAllCategories();
-
+    const cats  = getAllCats();
     if (!cats.length) { bar.classList.remove('visible'); return; }
     bar.classList.add('visible');
-
-    const allCats = ['all', ...cats];
-    pills.innerHTML = allCats.map(key => {
+    pills.innerHTML = ['all', ...cats].map(key => {
       const isAll = key === 'all';
-      const cat   = isAll ? null : CATEGORIES[key];
-      const label = isAll ? 'All' : `${cat.emoji} ${cat.label}`;
-      const active = activeFilters.has(key) ? 'active' : '';
-      return `<span class="filter-pill ${active}" data-key="${key}">${label}</span>`;
+      const label = isAll ? 'All' : `${CATS[key].emoji} ${CATS[key].label}`;
+      return `<span class="filter-pill ${activeFilters.has(key) ? 'active' : ''}" data-key="${key}">${label}</span>`;
     }).join('');
-
-    pills.querySelectorAll('.filter-pill').forEach(pill => {
-      pill.addEventListener('click', () => toggleFilter(pill.dataset.key));
-    });
+    pills.querySelectorAll('.filter-pill').forEach(p => p.addEventListener('click', () => toggleFilter(p.dataset.key)));
   }
 
   function toggleFilter(key) {
@@ -450,12 +586,8 @@
       activeFilters.add('all');
     } else {
       activeFilters.delete('all');
-      if (activeFilters.has(key)) {
-        activeFilters.delete(key);
-        if (!activeFilters.size) activeFilters.add('all');
-      } else {
-        activeFilters.add(key);
-      }
+      activeFilters.has(key) ? activeFilters.delete(key) : activeFilters.add(key);
+      if (!activeFilters.size) activeFilters.add('all');
     }
     applyFilters();
     renderFilters();
@@ -463,43 +595,39 @@
 
   function applyFilters() {
     const showAll = activeFilters.has('all');
-
-    // Map markers
     allMarkers.forEach(({ marker, category }) => {
-      if (showAll || activeFilters.has(category)) {
-        if (!map.hasLayer(marker)) marker.addTo(map);
-      } else {
-        if (map.hasLayer(marker)) map.removeLayer(marker);
-      }
+      const show = showAll || activeFilters.has(category);
+      show ? (!map.hasLayer(marker) && marker.addTo(map)) : (map.hasLayer(marker) && map.removeLayer(marker));
     });
-
-    // Sidebar location rows
     document.querySelectorAll('.loc-row').forEach(row => {
-      const cat = row.dataset.category;
-      row.classList.toggle('filtered-out', !showAll && !activeFilters.has(cat));
+      row.classList.toggle('filtered-out', !showAll && !activeFilters.has(row.dataset.cat));
     });
   }
 
-  // ── Fly To ────────────────────────────────────────────
-  function flyTo(reelIndex) {
-    const pts = reels[reelIndex].locations.map(l => [l.place.lat, l.place.lon]);
+  // ── Fly to ────────────────────────────────────────────
+  function flyTo(ri) {
+    const pts = reels[ri].locations.map(l => [l.place.lat, l.place.lon]);
     if (pts.length === 1) map.setView(pts[0], 14, { animate: true });
     else if (pts.length > 1) map.fitBounds(pts, { padding: [60,60], maxZoom: 14, animate: true });
   }
 
-  function flyToLoc(reelIndex, locIndex) {
-    const loc = reels[reelIndex].locations[locIndex];
+  function flyToLoc(ri, li) {
+    const loc = reels[ri].locations[li];
     map.setView([loc.place.lat, loc.place.lon], 15, { animate: true });
-    // Open the corresponding marker popup
-    const entry = allMarkers.find(m => m.reelIndex === reelIndex && m.locIndex === locIndex);
+    const entry = allMarkers.find(m => m.reelIdx === ri && m.locIdx === li);
     if (entry) entry.marker.openPopup();
+    // Close sheet on mobile so map is visible
+    if (window.innerWidth < 769) {
+      sheetOpen = false;
+      document.getElementById('sidebar').classList.remove('open');
+    }
   }
 
-  // ── Render List ───────────────────────────────────────
+  // ── Render list ───────────────────────────────────────
   function renderList() {
     const list  = document.getElementById('reelList');
     const label = document.getElementById('countLabel');
-    const total = reels.reduce((sum, r) => sum + r.locations.length, 0);
+    const total = reels.reduce((s, r) => s + r.locations.length, 0);
     label.textContent = `${reels.length} Reel${reels.length !== 1 ? 's' : ''} · ${total} Location${total !== 1 ? 's' : ''}`;
 
     if (!reels.length) {
@@ -509,31 +637,23 @@
 
     list.innerHTML = reels.map((r, ri) => {
       const locRows = r.locations.map((loc, li) => {
-        const cat  = CATEGORIES[loc.categoryKey] || CATEGORIES.place;
+        const cat   = CATS[loc.catKey] || CATS.place;
         const stars = loc.place.rating
           ? `<span class="loc-rating">
-               <span class="stars">${renderStars(loc.place.rating)}</span>
+               <span>${renderStars(loc.place.rating)}</span>
                ${loc.place.rating.toFixed(1)}
-               <span class="loc-rating-count">${formatCount(loc.place.ratingCount)}</span>
-             </span>`
-          : '';
-        // Extract town: last 2 parts of address
-        const addrParts = (loc.place.address || '').split(',');
-        const town = addrParts.slice(-2).join(',').trim();
-
+               <span class="loc-rating-count">${fmtCount(loc.place.ratingCount)}</span>
+             </span>` : '';
+        const parts = (loc.place.address || '').split(',');
+        const town  = parts.slice(-2).join(',').trim();
         return `
-          <div class="loc-row" data-category="${loc.categoryKey}" onclick="flyToLoc(${ri},${li})">
+          <div class="loc-row" data-cat="${loc.catKey}" onclick="flyToLoc(${ri},${li})">
             <div class="loc-icon">${cat.emoji}</div>
             <div class="loc-body">
               <div class="loc-name">${loc.place.name}</div>
               <div class="loc-category">${cat.label}</div>
-              <div class="loc-meta">
-                ${stars}
-                <span class="loc-address">${town}</span>
-              </div>
-              <a class="loc-maps-link" href="${loc.place.mapsUrl}" target="_blank" onclick="event.stopPropagation()">
-                📍 Google Maps ↗
-              </a>
+              <div class="loc-meta">${stars}<span class="loc-address">${town}</span></div>
+              <a class="loc-maps-link" href="${loc.place.mapsUrl}" target="_blank" onclick="event.stopPropagation()">📍 Google Maps ↗</a>
             </div>
           </div>`;
       }).join('');
@@ -583,33 +703,33 @@
         return;
       }
 
-      // Attach category key to each location
-      data.locations.forEach(loc => {
-        loc.categoryKey = categorize(loc.place.types);
-      });
+      // Attach category
+      data.locations.forEach(loc => { loc.catKey = categorize(loc.place.types); });
 
+      const reelIdx = reels.length;
       reels.unshift(data);
+
+      // Shift all existing marker reelIdx up by 1
+      allMarkers.forEach(m => m.reelIdx++);
+
       addMarkersForReel(data, 0);
-
-      // Re-index markers since we unshifted
-      allMarkers.forEach(m => { if (m.reelIndex >= 0) m.reelIndex++; });
-      // Reset the ones we just added
-      const newCount = data.locations.length;
-      for (let i = allMarkers.length - newCount; i < allMarkers.length; i++) {
-        allMarkers[i].reelIndex = 0;
-      }
-
       renderList();
       flyTo(0);
 
-      const mapped = data.locations.length;
-      setStatus(`✓ ${mapped} location${mapped !== 1 ? 's' : ''} mapped.`, 'success');
+      setStatus(`✓ ${data.locations.length} location${data.locations.length !== 1 ? 's' : ''} mapped.`, 'success');
       document.getElementById('urlInput').value = '';
+
+      // On mobile: collapse sheet so user can see the map
+      if (window.innerWidth < 769) {
+        setTimeout(() => {
+          sheetOpen = false;
+          document.getElementById('sidebar').classList.remove('open');
+        }, 1200);
+      }
 
     } catch (err) {
       setStatus('Network error — is the server running?', 'error');
     }
-
     btn.disabled = false;
   }
 
